@@ -23,11 +23,12 @@ class ProductAttributeValues(WebsiteSale):
             search=search,
             ppg=ppg,
             **post)
-        domain = request.env.context.get('shop_search_domain', [])
+        #domain = request.env.context.get('shop_search_domain', [])
         # Load all products without limit for the filter check on
         # attribute values
-        templates = request.env['product.template'].search(
-            domain, limit=False)
+        #templates = request.env['product.template'].search(
+        #    domain, limit=False)
+        templates = res.qcontext['search_product']
         ProductTemplateAttributeLine = request.env[
             'product.template.attribute.line']
         attribute_values = ProductTemplateAttributeLine.search([
