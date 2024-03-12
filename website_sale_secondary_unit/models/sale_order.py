@@ -1,5 +1,7 @@
 # Copyright 2019 Tecnativa - Sergio Teruel
 # License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl).
+import math
+
 from odoo import api, models
 from odoo.http import request
 from odoo.tools.float_utils import float_round
@@ -30,8 +32,18 @@ class SaleOrder(models.Model):
         res = super()._website_product_id_change(
             order_id, product_id, qty=qty, **kwargs
         )
+        # Copied from branch 12.0: https://github.com/OCA/e-commerce/pull/908
+        SecondaryUom = self.env['product.secondary.unit']
         secondary_uom_id = self.env.context.get("secondary_uom_id", False)
         res["secondary_uom_id"] = secondary_uom_id
+        if secondary_uom_id:
+            secondary_uom = SecondaryUom.browse(secondary_uom_id)
+            factor = secondary_uom.factor
+            if factor.is_integer() or 'secondary_converted' in request.params or 'add_qty' in request.params:
+                return res
+            qty = math.ceil(qty/factor) * factor
+            res['product_uom_qty'] = qty 
+            request.params['secondary_converted'] = True
         return res
 
     def _cart_update(
@@ -64,7 +76,7 @@ class SaleOrder(models.Model):
                         precision_rounding=secondary_uom.uom_id.rounding,
                     )
                     secondary_uom_id = secondary_uom.id
-        return super(
+        res = super(
             SaleOrder, self.with_context(secondary_uom_id=secondary_uom_id)
         )._cart_update(
             product_id=product_id,
@@ -74,6 +86,9 @@ class SaleOrder(models.Model):
             attributes=attributes,
             **kwargs
         )
+        if add_qty:
+            self.env['sale.order.line'].browse(res['line_id']).product_uom_qty = float(add_qty)
+        return res
 
     def _compute_cart_info(self):
         res = super()._compute_cart_info()
