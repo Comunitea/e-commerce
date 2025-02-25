@@ -28,7 +28,11 @@ class ProductAttributeValues(WebsiteSale):
         # attribute values
         #templates = request.env['product.template'].search(
         #    domain, limit=False)
-        templates = res.qcontext['search_product']
+        if 'search_product' in res.qcontext:
+            templates = res.qcontext['search_product']
+        else:
+            domain = request.env.context.get('shop_search_domain', [])
+            templates = request.env['product.template'].search(domain, limit=False)
         ProductTemplateAttributeLine = request.env[
             'product.template.attribute.line']
         attribute_values = ProductTemplateAttributeLine.search([
